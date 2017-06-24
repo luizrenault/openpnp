@@ -74,6 +74,8 @@ import org.openpnp.gui.importer.EagleMountsmdUlpImporter;
 import org.openpnp.gui.importer.KicadPosImporter;
 import org.openpnp.gui.importer.NamedCSVImporter;
 import org.openpnp.gui.importer.SolderPasteGerberImporter;
+import org.openpnp.gui.exporter.BoardExporter;
+import org.openpnp.gui.exporter.NeodenTM245PExporter;
 import org.openpnp.gui.support.HeadCellValue;
 import org.openpnp.gui.support.LengthCellValue;
 import org.openpnp.gui.support.MessageBoxes;
@@ -166,6 +168,7 @@ public class MainFrame extends JFrame {
     private JPanel panel_2;
     private JMenuBar menuBar;
     private JMenu mnImport;
+    private JMenu mnExport;
     private JMenu mnScripts;
     private JMenu mnWindows;
 
@@ -240,6 +243,12 @@ public class MainFrame extends JFrame {
         mnImport = new JMenu("Import Board");
         mnImport.setMnemonic(KeyEvent.VK_I);
         mnFile.add(mnImport);
+
+        // File -> Export
+        //////////////////////////////////////////////////////////////////////
+        mnFile.addSeparator();
+        mnExport = new JMenu("Export Board");
+        mnFile.add(mnExport); 
 
 
         if (!macOsXMenus) {
@@ -501,6 +510,7 @@ public class MainFrame extends JFrame {
         panelCameraAndInstructions.add(cameraPanel, BorderLayout.CENTER);
 
         registerBoardImporters();
+        registerBoardExporters();
 
         addComponentListener(componentListener);
 
@@ -586,6 +596,9 @@ public class MainFrame extends JFrame {
         registerBoardImporter(SolderPasteGerberImporter.class);
     }
 
+    private void registerBoardExporters() {
+    	registerBoardExporter(NeodenTM245PExporter.class);
+    }
     /**
      * Register a BoardImporter with the system, causing it to gain a menu location in the
      * File->Import menu.
@@ -615,6 +628,33 @@ public class MainFrame extends JFrame {
         mnImport.add(menuItem);
     }
 
+    /**
+     * Register a BoardExporter with the system, causing it to gain a menu location in the
+     * File->Export menu.
+     * 
+     * @param exporter
+     */
+    public void registerBoardExporter(final Class<? extends BoardExporter> boardExporterClass) {
+        final BoardExporter boardExporter;
+        try {
+            boardExporter = boardExporterClass.newInstance();
+        }
+        catch (Exception e) {
+            throw new Error(e);
+        }
+        JMenuItem menuItem = new JMenuItem(new AbstractAction() {
+            {
+                putValue(NAME, boardExporter.getExporterName());
+                putValue(SHORT_DESCRIPTION, boardExporter.getExporterDescription());
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                jobPanel.exportBoard(boardExporterClass);
+            }
+        });
+        mnExport.add(menuItem);
+    }
     public void showInstructions(String title, String instructions, boolean showCancelButton,
             boolean showProceedButton, String proceedButtonText,
             ActionListener cancelActionListener, ActionListener proceedActionListener) {

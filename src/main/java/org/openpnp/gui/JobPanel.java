@@ -69,6 +69,7 @@ import org.openpnp.events.JobLoadedEvent;
 import org.openpnp.events.PlacementSelectedEvent;
 import org.openpnp.gui.components.AutoSelectTextTable;
 import org.openpnp.gui.importer.BoardImporter;
+import org.openpnp.gui.exporter.BoardExporter;
 import org.openpnp.gui.panelization.DlgAutoPanelize;
 import org.openpnp.gui.panelization.DlgPanelXOut;
 import org.openpnp.gui.processes.TwoPlacementBoardLocationProcess;
@@ -737,6 +738,49 @@ public class JobPanel extends JPanel {
             MessageBoxes.errorBox(getTopLevelAncestor(), "Import Failed", e);
         }
     }
+
+public void exportBoard(Class<? extends BoardExporter> boardExporterClass) {
+        if (getSelectedBoardLocation() == null) {
+            MessageBoxes.errorBox(getTopLevelAncestor(), "Export Failed",
+                    "Please select a board in the Jobs tab to export.");
+            return;
+        }
+
+        BoardExporter boardExporter;
+        try {
+            boardExporter = boardExporterClass.newInstance();
+        }
+        catch (Exception e) {
+            MessageBoxes.errorBox(getTopLevelAncestor(), "Export Failed", e);
+            return;
+        }
+
+        try {
+            if (boardExporter.exportBoard((Frame) getTopLevelAncestor(), getSelectedBoardLocation())) {
+            	//TODO Implement Board Exporter
+//                for (Placement placement : exportedBoard.getPlacements()) {
+//                    existingBoard.addPlacement(placement);
+//                }
+//                for (BoardPad pad : exportedBoard.getSolderPastePads()) {
+//                    // TODO: This is a temporary hack until we redesign the importer
+//                    // interface to be more intuitive. The Gerber importer tends
+//                    // to return everything in Inches, so this is a method to
+//                    // try to get it closer to what the user expects to see.
+//                    pad.setLocation(pad.getLocation()
+//                            .convertToUnits(getSelectedBoardLocation().getLocation().getUnits()));
+//                    existingBoard.addSolderPastePad(pad);
+//                }
+//                jobPlacementsPanel.setBoardLocation(getSelectedBoardLocation());
+//                jobPastePanel.setBoardLocation(getSelectedBoardLocation());
+            } else {
+                MessageBoxes.errorBox(getTopLevelAncestor(), "Export Failed", "Failed to export board...");
+            }
+        }
+        catch (Exception e) {
+            MessageBoxes.errorBox(getTopLevelAncestor(), "Export Failed", e);
+        }
+    }
+
 
     public final Action openJobAction = new AbstractAction("Open Job...") {
         {
