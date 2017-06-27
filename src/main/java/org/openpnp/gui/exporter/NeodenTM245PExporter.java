@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -33,6 +35,7 @@ import javax.swing.KeyStroke;
 import javax.swing.border.TitledBorder;
 
 import org.openpnp.gui.support.MessageBoxes;
+import org.openpnp.machine.reference.ReferencePnpJobProcessor;
 import org.openpnp.machine.reference.feeder.ReferenceDragFeeder;
 import org.openpnp.machine.reference.feeder.ReferenceTrayFeeder;
 import org.openpnp.machine.reference.vision.ReferenceBottomVision;
@@ -45,6 +48,7 @@ import org.openpnp.model.Part;
 import org.openpnp.model.Placement;
 import org.openpnp.spi.Feeder;
 import org.openpnp.spi.Head;
+import org.openpnp.spi.JobProcessor;
 import org.openpnp.spi.Nozzle;
 import org.openpnp.spi.NozzleTip;
 import org.openpnp.spi.PartAlignment;
@@ -214,6 +218,10 @@ public class NeodenTM245PExporter implements BoardExporter {
 
 	                List<Feeder> feeders = Configuration.get().getMachine().getFeeders();
 	                List<PartAlignment> partAlignments=Configuration.get().getMachine().getPartAlignments();
+	                if(Configuration.get().getMachine().getPnpJobProcessor().getClass()==ReferencePnpJobProcessor.class){
+	                	ReferencePnpJobProcessor rpnpjp=(ReferencePnpJobProcessor) Configuration.get().getMachine().getPnpJobProcessor();
+	                }
+	                
 	                for (Feeder feeder:feeders){
 	                	int number=Integer.parseInt(feeder.getName());
 	                	if(number<1 || number>99){
@@ -223,7 +231,6 @@ public class NeodenTM245PExporter implements BoardExporter {
 	                	number+=10000;
 	                	Location location=feeder.getPickLocation().convertToUnits(LengthUnit.Millimeters);
 	                	Part part=feeder.getPart();
-
 	                	if(part != null){
                 			int x1=(int) (location.getX()*1000);
                 			int y1=(int) (location.getY()*1000);
@@ -361,9 +368,10 @@ public class NeodenTM245PExporter implements BoardExporter {
                 	writer.write("1" + separatorCSV + "1" + separatorCSV + "0" + separatorCSV + "0" + separatorCSV + "0" + separatorCSV + "0" + separatorCSV + "1" + separatorCSV + "ORIGIN");
                 	writer.newLine();
 
-                	List<Placement> placements=exportboard.getPlacements();
+                	List<Placement> placements=exportboard.getPlacements();//.stream().sorted().collect(Collectors.toList());
                 	int number=2;
                 	for(Placement placement:placements){
+                		
                 		if(placement.getPart()!=null){
                 			if(exportboardlocation.getSide()!=placement.getSide()){
                 				continue;
