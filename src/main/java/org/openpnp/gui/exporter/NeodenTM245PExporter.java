@@ -44,6 +44,9 @@ import org.openpnp.model.Location;
 import org.openpnp.model.Part;
 import org.openpnp.model.Placement;
 import org.openpnp.spi.Feeder;
+import org.openpnp.spi.Head;
+import org.openpnp.spi.Nozzle;
+import org.openpnp.spi.NozzleTip;
 import org.openpnp.spi.PartAlignment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -203,13 +206,14 @@ public class NeodenTM245PExporter implements BoardExporter {
                 logger.debug("Parsing " + textFieldTopFile.getText() + " CSV FIle");
                 boolean firsttapefeeder=true;
                 boolean firsttrayfeeder=true;
+                String separatorCSV=",";
                 try {
 					topFile = new FileWriter(textFieldTopFile.getText());
 	                BufferedWriter writer = new BufferedWriter(topFile);
 
 
 	                List<Feeder> feeders = Configuration.get().getMachine().getFeeders();
-	                List<PartAlignment> partaligment=Configuration.get().getMachine().getPartAlignments();
+	                List<PartAlignment> partAlignments=Configuration.get().getMachine().getPartAlignments();
 	                for (Feeder feeder:feeders){
 	                	int number=Integer.parseInt(feeder.getName());
 	                	if(number<1 || number>99){
@@ -226,7 +230,9 @@ public class NeodenTM245PExporter implements BoardExporter {
                 			int x2=(int) (location.getX()*1000);
                 			int y2=(int) (location.getY()*1000);
                 			int pickdepth=(int) (location.getZ()*1000);
-                			int placedepth=(int) (-part.getHeight().convertToUnits(LengthUnit.Millimeters).getValue()*1000);
+                			int placedepth=(int) (-exportboardlocation.getLocation().convertToUnits(LengthUnit.Millimeters).getZ()*1000-part.getHeight().convertToUnits(LengthUnit.Millimeters).getValue()*1000);
+                			if(placedepth>1000) placedepth=1000;
+                			if(placedepth<-10000) placedepth=-10000;
                 			int pickdelay=0;
                 			int placedelay=0;
                 			double sizexfp=part.getPackage().getFootprint().getBodyWidth();
@@ -271,17 +277,19 @@ public class NeodenTM245PExporter implements BoardExporter {
                 			int loopx=0;
                 			int loopy=0;
                 			
-        	                if(partaligment.getClass()==ReferenceBottomVision.class){
-        	                	ReferenceBottomVision rbv=(ReferenceBottomVision) partaligment;
-        	                	calibration=rbv.getPartSettings(part).isEnabled()?1:0;
-        	                }
-                			int skip=feeder.isEnabled()?1:0;
+                			for (PartAlignment partAlignment : partAlignments) {
+                				if(partAlignment.getClass()==ReferenceBottomVision.class){
+                					ReferenceBottomVision rbv=(ReferenceBottomVision) partAlignment;
+                					calibration=rbv.getPartSettings(part).isEnabled()?1:0;
+                				}
+                			}
+                			int skip=feeder.isEnabled()?0:1;
                 			
                 			String spec=part.getId();
 
 	                		if(feeder.getClass()==ReferenceDragFeeder.class){
 	        	                if(firsttapefeeder){
-	        	                	writer.write("#stack Id;X1;Y1;X2;Y2;Pick depth;Place depth;Pick delay;Place delay;Size X;Size Y;Rate;Speed;Torque;Vacuum 1;Vacuum 2;Vacuum Off;Calibration;Skip;Spec");
+	        	                	writer.write("#stack Id" + separatorCSV + "X1" + separatorCSV + "Y1" + separatorCSV + "X2" + separatorCSV + "Y2" + separatorCSV + "Pick depth" + separatorCSV + "Place depth" + separatorCSV + "Pick delay" + separatorCSV + "Place delay" + separatorCSV + "Size X" + separatorCSV + "Size Y" + separatorCSV + "Rate" + separatorCSV + "Speed" + separatorCSV + "Torque" + separatorCSV + "Vacuum 1" + separatorCSV + "Vacuum 2" + separatorCSV + "Vacuum Off" + separatorCSV + "Calibration" + separatorCSV + "Skip" + separatorCSV + "Spec");
 	        	                	writer.newLine();
 	        	                	firsttapefeeder=false;
 	        	                }
@@ -290,7 +298,7 @@ public class NeodenTM245PExporter implements BoardExporter {
 	                		}
 	                		if(feeder.getClass()==ReferenceTrayFeeder.class){
 	        	                if(firsttrayfeeder){
-	        	                	writer.write("#stack Id;X1;Y1;X2;Y2;Pick depth;Place depth;Pick delay;Place delay;Size X;Size Y;Rate;Speed;Torque;Vacuum 1;Vacuum 2;Vacuum Off;Calibration;Skip;Chip X;Chip Y;Loop X;Loop Y;Spec");
+	        	                	writer.write("#stack Id" + separatorCSV + "X1" + separatorCSV + "Y1" + separatorCSV + "X2" + separatorCSV + "Y2" + separatorCSV + "Pick depth" + separatorCSV + "Place depth" + separatorCSV + "Pick delay" + separatorCSV + "Place delay" + separatorCSV + "Size X" + separatorCSV + "Size Y" + separatorCSV + "Rate" + separatorCSV + "Speed" + separatorCSV + "Torque" + separatorCSV + "Vacuum 1" + separatorCSV + "Vacuum 2" + separatorCSV + "Vacuum Off" + separatorCSV + "Calibration" + separatorCSV + "Skip" + separatorCSV + "Chip X" + separatorCSV + "Chip Y" + separatorCSV + "Loop X" + separatorCSV + "Loop Y" + separatorCSV + "Spec");
 	        	                	writer.newLine();
 	        	                	firsttrayfeeder=false;
 	        	                }
@@ -302,72 +310,102 @@ public class NeodenTM245PExporter implements BoardExporter {
 	        	                loopy=referencetrayfeeder.getTrayCountY();
 	                		}
 
-                			writer.write(number + ";" );
-	                		writer.write(x1 + ";" + y1 + ";");
-                			writer.write(x2 + ";" + y2 + ";");
-                			writer.write(pickdepth + ";");
-                			writer.write(placedepth + ";");
-                			writer.write(pickdelay + ";");
-                			writer.write(placedelay + ";");
-                			writer.write(sizex + ";");
-                			writer.write(sizey + ";");
-                			writer.write(rate + ";");
-                			writer.write(speed + ";");
-                			writer.write(torque + ";");
-                			writer.write(vacuum1 + ";");
-                			writer.write(vacuum2 + ";");
-                			writer.write(vacuumoff + ";");
-                			writer.write(calibration + ";");
-                			writer.write(skip + ";");
+                			writer.write(number + separatorCSV );
+	                		writer.write(x1 + separatorCSV + y1 + separatorCSV);
+                			writer.write(x2 + separatorCSV + y2 + separatorCSV);
+                			writer.write(pickdepth + separatorCSV);
+                			writer.write(placedepth + separatorCSV);
+                			writer.write(pickdelay + separatorCSV);
+                			writer.write(placedelay + separatorCSV);
+                			writer.write(sizex + separatorCSV);
+                			writer.write(sizey + separatorCSV);
+                			writer.write(rate + separatorCSV);
+                			writer.write(speed + separatorCSV);
+                			writer.write(torque + separatorCSV);
+                			writer.write(vacuum1 + separatorCSV);
+                			writer.write(vacuum2 + separatorCSV);
+                			writer.write(vacuumoff + separatorCSV);
+                			writer.write(calibration + separatorCSV);
+                			writer.write(skip + separatorCSV);
 
 	                		if(feeder.getClass()==ReferenceTrayFeeder.class){
-	                			writer.write(chipx + ";");
-	                			writer.write(chipy + ";");
-	                			writer.write(loopx + ";");
-	                			writer.write(loopy + ";");
+	                			writer.write(chipx + separatorCSV);
+	                			writer.write(chipy + separatorCSV);
+	                			writer.write(loopx + separatorCSV);
+	                			writer.write(loopy + separatorCSV);
 	                		}
                 			
-                			writer.write(spec);
+                			writer.write(spec.replaceAll(separatorCSV, ""));
                 			writer.newLine();
 	                	}
 
 
 	                }
 
-                	writer.write("#Circuit;OffsetX;OffsetY;Skip");
+                	writer.write("#Circuit" + separatorCSV + "OffsetX" + separatorCSV + "OffsetY" + separatorCSV + "Skip");
                 	writer.newLine();
 
-                	writer.write("10201;");
+                	writer.write("10201" + separatorCSV);
                 	Location offset=exportboardlocation.getLocation().convertToUnits(LengthUnit.Millimeters);
                 	
-                	writer.write((int)(offset.getX()*1000) + ";");
-                	writer.write((int)(offset.getY()*1000) + ";");
+                	writer.write((int)(offset.getX()*1000) + separatorCSV);
+                	writer.write((int)(offset.getY()*1000) + separatorCSV);
                 	writer.write(exportboardlocation.isEnabled()?"0":"1");
                 	writer.newLine();
 
-                	writer.write("#Component;Nozzle;Stack;X;Y;Angle;Skip;Name");
+                	writer.write("#Component" + separatorCSV + "Nozzle" + separatorCSV + "Stack" + separatorCSV + "X" + separatorCSV + "Y" + separatorCSV + "Angle" + separatorCSV + "Skip" + separatorCSV + "Name");
                 	writer.newLine();
-                	writer.write("0;100");
+                	writer.write("0" + separatorCSV + "100");
+                	writer.newLine();
+
+                	writer.write("1" + separatorCSV + "1" + separatorCSV + "0" + separatorCSV + "0" + separatorCSV + "0" + separatorCSV + "0" + separatorCSV + "1" + separatorCSV + "ORIGIN");
                 	writer.newLine();
 
                 	List<Placement> placements=exportboard.getPlacements();
-                	int number=1;
+                	int number=2;
                 	for(Placement placement:placements){
                 		if(placement.getPart()!=null){
                 			if(exportboardlocation.getSide()!=placement.getSide()){
                 				continue;
                 			}
-                    		Feeder feeder=Configuration.get().getMachine().getFeeder(placement.getPart().getId());
-	                		writer.write(number + ";");
-	                		writer.write("1;");
+                    		Feeder feeder=null;
+                			for (Feeder feederfromlist : feeders) {
+								if(feederfromlist!=null && feederfromlist.getPart()!=null && feederfromlist.getPart().equals(placement.getPart()) && feederfromlist.isEnabled()){
+									feeder=feederfromlist;
+									break;
+								}
+							}
+                    		writer.write(number + separatorCSV);
+                    		number++;
+
+                    		String tip=null;
+                			List<Head> heads=Configuration.get().getMachine().getHeads();
+                			for (Head head : heads) {
+								List<Nozzle> nozzles=head.getNozzles();
+								for (Nozzle nozzle : nozzles) {
+									List<NozzleTip> nozzletips=nozzle.getNozzleTips();
+									for (NozzleTip nozzleTip : nozzletips) {
+										if(nozzleTip.canHandle(placement.getPart())){
+											tip=nozzleTip.getName();
+											break;
+										}
+									}
+									if(tip!=null) break;
+								}
+								if(tip!=null) break;
+							}
+	                		writer.write(((tip!=null)?tip:"0") + separatorCSV);
                     		if(feeder!=null){
-		                		writer.write(feeder.getId());
+		                		writer.write(feeder.getName()+separatorCSV);
                     		} else {
-		                		writer.write("0;");
+		                		writer.write("0" + separatorCSV);
                     		}
 	                		Location pos=placement.getLocation().rotateXy(exportboardlocation.getLocation().getRotation()).convertToUnits(LengthUnit.Millimeters);
 	                		int angle=(int)(pos.getRotation());
 	                		angle+=exportboardlocation.getLocation().getRotation();
+	                		if(feeder!=null){
+	                			angle+=feeder.getPickLocation().getRotation();
+	                		}
 	                		angle%=360;
 	                		if(angle>180){
 	                			angle-=360;
@@ -376,9 +414,9 @@ public class NeodenTM245PExporter implements BoardExporter {
 	                			angle+=360;
 	                		}
 	                		
-	                		writer.write((int)(pos.getX()*1000) + ";" + (int)(pos.getY()*1000) + ";" + angle + ";");
-	                		writer.write(((placement.getType()==Placement.Type.Place)?"0":"1") + ";");
-	                		writer.write(placement.getId());
+	                		writer.write((int)(pos.getX()*1000) + separatorCSV + (int)(pos.getY()*1000) + separatorCSV + angle + separatorCSV);
+	                		writer.write(((placement.getType()==Placement.Type.Place)?"0":"1") + separatorCSV);
+	                		writer.write(placement.getId().replaceAll(separatorCSV, ""));
 	                    	writer.newLine();
                 		}
                 	}
